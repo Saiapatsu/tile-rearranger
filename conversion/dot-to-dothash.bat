@@ -5,5 +5,5 @@ magick ^
 	( %1[32x32+64+32] ( +clone +clone ) -append ( +clone ) +append -repage +32+00 ) ^
 	-background #00000000 -flatten ^
 	%1 +swap +append ^
-	blobhash.png
+	%~2
 if NOT "%errorlevel%"=="0" pause

@@ -27,5 +27,5 @@ magick -background #00000000 -size 32x32 ^
 		( -size 256x32 xc:#00000000 %1[32x32+64+00] ( +clone +clone +clone +clone +clone +clone +clone ) +append ) ^
 	+repage -flatten ) ^
 	-append ^
-	crossfire.png
+	%~2
 if NOT "%errorlevel%"=="0" pause
