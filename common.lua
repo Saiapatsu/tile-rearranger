@@ -89,5 +89,22 @@ function common.split(target)
 	return split
 end
 
+function common.convert(target, tag)
+	local split = common.split(target)
+	local where = split.dir .. "\\" .. split.name .. "_dothash" .. split.ext
+	local what = split.tag .. "-to-" .. tag
+	
+	local success, reason, exitcode = os.execute(table.concat({
+		common.unparse(path.resolve(path.dirname(args[1]), "conversion\\" .. what)),
+		common.unparse(target),
+		common.unparse(where),
+	}, " "))
+	
+	if not success then
+		print("Unable to convert " .. split.tag .. " to dothash")
+		io.read()
+	end
+end
+
 -- escape2 = function(...) print(common.escape(...)) end
 return common
