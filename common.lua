@@ -52,11 +52,15 @@ function common.unparse(str)
 	yeah()
 	
 	if needQuotes then
-		if out:sub(-1) == "\\" then
-			-- trailing backslash may eat the quote
-			return "\"" .. out .. "\\\""
-		else
+		-- trailing backslash may eat the quote
+		if out:sub(-1) == "\\" then out = out .. "\\" end
+		-- starting an executable on a path starting with a quote has arcane
+		-- behavior, let's put the quote after the first character to avoid that
+		if out:sub(1, 1) == " " or out:sub(1, 1) == "\t" then
+			-- beyond saving
 			return "\"" .. out .. "\""
+		else
+			return out:sub(1, 1) .. "\"" .. out:sub(2) .. "\""
 		end
 	else
 		return out
