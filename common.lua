@@ -91,7 +91,7 @@ end
 
 function common.convert(target, tag)
 	local split = common.split(target)
-	local where = split.dir .. "\\" .. split.name .. "_dothash" .. split.ext
+	local where = split.dir .. "\\" .. split.name .. "_" .. tag .. split.ext
 	local what = split.tag .. "-to-" .. tag
 	
 	local success, reason, exitcode = os.execute(table.concat({
@@ -101,7 +101,7 @@ function common.convert(target, tag)
 	}, " "))
 	
 	if not success then
-		print("Unable to convert " .. split.tag .. " to dothash")
+		print("Unable to convert " .. split.tag .. " to " .. tag)
 		io.read()
 	end
 end
