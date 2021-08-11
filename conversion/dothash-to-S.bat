@@ -2,7 +2,7 @@
 :: except it doesn't suck like montage
 
 magick -background #00000000 -size 32x32 ^
-	(
+	( ^
 		xc:#00000000 ^
 		%1[32x32+64+32] ^
 		%1[32x32+32+64] ^
