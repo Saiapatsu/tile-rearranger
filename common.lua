@@ -106,6 +106,91 @@ function common.convert(target, tag)
 	end
 end
 
+--------------------------------------------------------------------------------
+--                                Tile composition
+--------------------------------------------------------------------------------
+
+-- blank tile
+local function empty() return "-size 32x32 xc:#00000000" end
+
+-- clip a part out of a solid tile
+local function clip(geometry)
+	return function(from, src, i)
+		return table.concat({"(", -- separate stack from the other images
+			get(from, src, -1), -- solid tile
+			"-crop " .. geometry, -- leave only the specified area. the
+			--                        "virtual canvas" position remains!
+			empty(), -- a transparent image the size of one tile
+			"-flatten", -- flatten into one tile-sized layer with the tile
+			--            in the right spot
+		")"}, " ")
+	end
+end
+
+-- overlay many tiles
+local function combine(...)
+	local args = {...}
+	return function(from, src, i)
+		local args2 = {}
+		for i,v in ipairs(args) do
+			args2[i] = common.get(from, src, v)
+		end
+		return "( " .. table.concat(args2, " ") .. " +repage -flatten )"
+	end
+end
+
+common.composition = {
+	[ -1] = empty, -- solid tile
+	[  0] = empty, -- blank tile
+	-- corners
+	[  1] = --[[   (        1),]] clip("15x15+17+17"), -- nw
+	[  4] = --[[   (      4  ),]] clip("15x15+0+17"), -- ne
+	[  5] = combine(      4,1),
+	[ 16] = --[[   (   16    ),]] clip("15x15+0+0"), -- se
+	[ 17] = combine(   16  ,1),
+	[ 20] = combine(   16,4  ),
+	[ 21] = combine(   16,4,1),
+	[ 64] = --[[   (64       ),]] clip("15x15+17+0"), -- sw
+	[ 65] = combine(64     ,1),
+	[ 68] = combine(64   ,4  ),
+	[ 69] = combine(64   ,4,1),
+	[ 80] = combine(64,16    ),
+	[ 81] = combine(64,16  ,1),
+	[ 84] = combine(64,16,4  ),
+	[ 85] = combine(64,16,4,1),
+	-- edges
+	[  2] = --[[   (         2),]] clip("15x32+17+0"), -- w
+	[  8] = --[[   (       8  ),]] clip("32x15+0+17"), -- n
+	[ 10] = combine(       8,2),
+	[ 32] = --[[   (    32    ),]] clip("15x32+0+0"), -- e
+	[ 34] = combine(    32  ,2),
+	[ 40] = combine(    32,8  ),
+	[ 42] = combine(    32,8,2),
+	[128] = --[[   (128       ),]] clip("32x15+0+0"), -- s
+	[130] = combine(128     ,2),
+	[136] = combine(128   ,8  ),
+	[138] = combine(128   ,8,2),
+	[160] = combine(128,32    ),
+	[162] = combine(128,32  ,2),
+	[168] = combine(128,32,8  ),
+	[170] = combine(128,32,8,2),
+}
+
+function common.get(from, src, i)
+	if src[i] then
+		-- exact match
+		local x = (src[i]  -1)%src.w
+		local y = (src[i]-x-1)/src.w
+		return from .. "[32x32+" .. x*32 .. "+" .. y*32 .. "]"
+		
+	elseif common.composition[i] then
+		return common.composition[i](from, src, i)
+		
+	else
+		error("Unable to find or create tile " .. i)
+	end
+end
+
 common.layouts = {
 	[""] = { -- single tile
 		w = 1, h = 1,
@@ -146,5 +231,8 @@ common.layouts = {
 	},
 }
 
--- escape2 = function(...) print(common.escape(...)) end
+--------------------------------------------------------------------------------
+--                                    Export
+--------------------------------------------------------------------------------
+
 return common
