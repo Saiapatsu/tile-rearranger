@@ -107,7 +107,10 @@ function common.convert(target, tag)
 end
 
 common.layouts = {
-	dot = {
+	[""] = { -- single tile
+		w = 1, h = 1,
+		-1,
+	}, dot = {
 		w = 3, h = 3,
 		16, 128, 64,
 		32,  -1,  2,
