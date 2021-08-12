@@ -1,28 +1,43 @@
 local script, from, to = table.unpack(args)
 local path = require("path")
 local common = require(path.resolve(path.dirname(table.remove(args, 1)), "..", "common.lua"))
+from, to = common.unparse(from), common.unparse(to)
 
 local src = common.layouts.bruh
 local dst = common.layouts.S
 
-local src2 = {}
-for i,v in ipairs(src) do
-	local x = (i  -1)%src.w
-	local y = (i-x-1)/src.w
-	src2[v] = common.unparse(from) .. "[32x32+" .. x*32 .. "+" .. y*32 .. "]"
-end
-src2[0] = "-size 32x32 xc:#00000000"
+local src2 = {w = src.w, h = src.h}
+for i,v in ipairs(src) do src2[v] = i end
 
+local composition = {
+	[-1] = function() return "-size 32x32 xc:#00000000" end,
+	[0]  = function() return "-size 32x32 xc:#00000000" end,
+}
+
+local function get(from, src, i)
+	if src[i] then
+		-- exact match
+		local x = (src[i]  -1)%src.w
+		local y = (src[i]-x-1)/src.w
+		return from .. "[32x32+" .. x*32 .. "+" .. y*32 .. "]"
+	elseif composition[i] then
+		return composition[i](from, src, i)
+	else
+		error("Unable to find or create tile " .. i)
+	end
+end
+
+local dst2 = {w = dst.w, h = dst.h}
 for i,v in ipairs(dst) do
-	dst[i] = assert(src2[v], tostring(v))
+	dst2[i] = get(from, src2, v)
 end
 
 os.execute(table.concat({
 	"magick montage",
 	"-background none",
-	"-tile " .. dst.w .. "x" .. dst.h,
+	"-tile " .. dst2.w .. "x" .. dst2.h,
 	"-geometry +0+0",
-	table.concat(dst, " "),
+	table.concat(dst2, " "),
 	common.unparse(to),
 }, " "))
 
