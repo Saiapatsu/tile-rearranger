@@ -14,14 +14,16 @@ for i,v in ipairs(dst) do
 	dst2[i] = common.get(from, src2, v)
 end
 
-os.execute(table.concat({
+local command = table.concat({
 	"magick montage",
 	"-background none",
 	"-tile " .. dst2.w .. "x" .. dst2.h,
 	"-geometry +0+0",
 	table.concat(dst2, " "),
-	common.unparse(to),
-}, " "))
+	to,
+}, " ")
+p(command, #command)
+p(os.execute(command))
 
 --[[ do return end ----------------------------------------
 
