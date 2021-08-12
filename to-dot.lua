@@ -5,7 +5,7 @@ local common = require(path.resolve(path.dirname(table.remove(args, 1)), "common
 for _,target in ipairs(args) do
 	local split = common.split(target)
 	
-	os.execute(table.concat({
+	local success, reason, exitcode = os.execute(table.concat({
 		"magick",
 		"-bordercolor #00000000",
 		common.unparse(target),
@@ -13,6 +13,11 @@ for _,target in ipairs(args) do
 		"-strip",
 		common.unparse(split.dir .. "\\" .. split.nametag .. "_dot" .. split.ext)
 	}, " "))
+	
+	if not success then
+		print("Unable to convert " .. split.tag .. " to " .. tag)
+		io.read()
+	end
 end
 
 -- io.read()
