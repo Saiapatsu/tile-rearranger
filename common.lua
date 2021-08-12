@@ -1,6 +1,10 @@
 local path = require("path")
 local common = {}
 
+--------------------------------------------------------------------------------
+--                            Shell execution-related
+--------------------------------------------------------------------------------
+
 -- http://www.windowsinspired.com/understanding-the-command-line-string-and-arguments-received-by-a-windows-program/
 -- http://www.windowsinspired.com/how-a-windows-programs-splits-its-command-line-into-individual-arguments/
 -- Will return str such that CommandLineToArgvW or parse_cmdline, if it enters in
@@ -69,6 +73,10 @@ function common.unparse(str)
 	return needQuotes and "\"" .. out .. "\"" or out
 end
 
+--------------------------------------------------------------------------------
+--                              Filename management
+--------------------------------------------------------------------------------
+
 --[[
 common.split(C:\Smoothing\fly_shop_empty_dot.base.111.png) = {
 	dir     = C:\Smoothing
@@ -88,6 +96,10 @@ function common.split(target)
 	if split.name == nil then split.name, split.tag = split.nametag, "" end
 	return split
 end
+
+--------------------------------------------------------------------------------
+--                                  Conversion
+--------------------------------------------------------------------------------
 
 function common.convert(target, tag)
 	local split = common.split(target)
