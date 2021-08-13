@@ -62,15 +62,13 @@ function common.unparse(str)
 		-- behavior, let's put the quote after the first character to avoid that
 		if out:sub(1, 1) == " " or out:sub(1, 1) == "\t" then
 			-- beyond saving
-			return "\"" .. out .. "\""
+			out = "\"" .. out .. "\""
 		else
-			return out:sub(1, 1) .. "\"" .. out:sub(2) .. "\""
+			out = out:sub(1, 1) .. "\"" .. out:sub(2) .. "\""
 		end
-	else
-		return out
 	end
 	
-	return needQuotes and "\"" .. out .. "\"" or out
+	return out
 end
 
 --------------------------------------------------------------------------------
