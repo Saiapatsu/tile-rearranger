@@ -202,21 +202,23 @@ common.composition = {
 	[ 84] = combine(64,16,4  ),
 	[ 85] = combine(64,16,4,1),
 	-- edges
+	-- overlaid in the order n-e-s-w
+	-- (where n means tile is to the north, e means tile is to the east etc.)
 	[  2] = --[[   (         2),]] clip("15x32+0+0"), -- w
-	[  8] = --[[   (       8  ),]] clip("32x15+0+0"), -- n
-	[ 10] = combine(       8,2),
-	[ 32] = --[[   (    32    ),]] clip("15x32+17+0"), -- e
-	[ 34] = combine(    32  ,2),
-	[ 40] = combine(    32,8  ),
-	[ 42] = combine(    32,8,2),
-	[128] = --[[   (128       ),]] clip("32x15+0+17"), -- s
-	[130] = combine(128     ,2),
-	[136] = combine(128   ,8  ),
-	[138] = combine(128   ,8,2),
-	[160] = combine(128,32    ),
-	[162] = combine(128,32  ,2),
-	[168] = combine(128,32,8  ),
-	[170] = combine(128,32,8,2),
+	[  8] = --[[   (8         ),]] clip("32x15+0+0"), -- n
+	[ 10] = combine(8       ,2),
+	[ 32] = --[[   (  32      ),]] clip("15x32+17+0"), -- e
+	[ 34] = combine(  32    ,2),
+	[ 40] = combine(8,32      ),
+	[ 42] = combine(8,32    ,2),
+	[128] = --[[   (     128  ),]] clip("32x15+0+17"), -- s
+	[130] = combine(     128,2),
+	[136] = combine(8   ,128  ),
+	[138] = combine(8   ,128,2),
+	[160] = combine(  32,128  ),
+	[162] = combine(  32,128,2),
+	[168] = combine(8,32,128  ),
+	[170] = combine(8,32,128,2),
 }
 
 function common.get(from, src, i)
