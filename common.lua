@@ -173,33 +173,31 @@ end
 common.composition = {
 	[ -1] = empty, -- solid tile
 	[  0] = empty, -- blank tile
-	-- corners
-	[  1] = --[[   (        1),]] clip("15x15+0+0"), -- nw
-	[  4] = --[[   (      4  ),]] clip("15x15+17+0"), -- ne
-	[  5] = combine(      4,1),
-	[ 16] = --[[   (   16    ),]] clip("15x15+17+17"), -- se
-	[ 17] = combine(   16  ,1),
-	[ 20] = combine(   16,4  ),
-	[ 21] = combine(   16,4,1),
-	[ 64] = --[[   (64       ),]] clip("15x15+0+17"), -- sw
-	[ 65] = combine(64     ,1),
-	[ 68] = combine(64   ,4  ),
-	[ 69] = combine(64   ,4,1),
-	[ 80] = combine(64,16    ),
-	[ 81] = combine(64,16  ,1),
-	[ 84] = combine(64,16,4  ),
-	[ 85] = combine(64,16,4,1),
-	-- edges
-	-- overlaid in the order n-e-s-w
-	-- (where n means tile is to the north, e means tile is to the east etc.)
-	[  2] = --[[   (         2),]] clip("15x32+0+0"), -- w
-	[  8] = --[[   (8         ),]] clip("32x15+0+0"), -- n
+	-- corners      sw se ne nw
+	[  1] = --[[   (          1),]] clip("15x15+0+0"),
+	[  4] = --[[   (       4   ),]] clip("15x15+17+0"),
+	[  5] = combine(       4 ,1),
+	[ 16] = --[[   (   16      ),]] clip("15x15+17+17"),
+	[ 17] = combine(   16    ,1),
+	[ 20] = combine(   16 ,4   ),
+	[ 21] = combine(   16 ,4 ,1),
+	[ 64] = --[[   (64         ),]] clip("15x15+0+17"),
+	[ 65] = combine(64       ,1),
+	[ 68] = combine(64    ,4   ),
+	[ 69] = combine(64    ,4 ,1),
+	[ 80] = combine(64,16      ),
+	[ 81] = combine(64,16    ,1),
+	[ 84] = combine(64,16 ,4   ),
+	[ 85] = combine(64,16 ,4 ,1),
+	-- edges        n  e   s w
+	[  2] = --[[   (         2),]] clip("15x32+0+0"),
+	[  8] = --[[   (8         ),]] clip("32x15+0+0"),
 	[ 10] = combine(8       ,2),
-	[ 32] = --[[   (  32      ),]] clip("15x32+17+0"), -- e
+	[ 32] = --[[   (  32      ),]] clip("15x32+17+0"),
 	[ 34] = combine(  32    ,2),
 	[ 40] = combine(8,32      ),
 	[ 42] = combine(8,32    ,2),
-	[128] = --[[   (     128  ),]] clip("32x15+0+17"), -- s
+	[128] = --[[   (     128  ),]] clip("32x15+0+17"),
 	[130] = combine(     128,2),
 	[136] = combine(8   ,128  ),
 	[138] = combine(8   ,128,2),
