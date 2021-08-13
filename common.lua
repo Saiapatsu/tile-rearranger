@@ -21,10 +21,11 @@ function common.unparse(str)
 		else
 			-- quote goes after first character to sidestep arcane startprocess() behavior
 			str = str:sub(1, 1) .. "\"" .. str:sub(2) .. "\""
+			if str:sub(1, 1) == "\\" then str = "\\" .. str end
 		end
 	end
 	
-	str:gsub("[[&<>^|\n]]", "^%0") -- escape shell characters
+	str = str:gsub("[&<>^|\n]", "^%0") -- escape shell characters
 	
 	return str
 	
