@@ -86,6 +86,8 @@ common.split(C:\Smoothing\fly_shop_empty_dot.base.111.png) = {
 	name    = fly_shop_empty
 	tag     =                dot
 	ext     =                   .base.111.png
+	
+	tag will be one of those described in common.layouts
 }
 ]]
 function common.split(target)
@@ -96,6 +98,11 @@ function common.split(target)
 	split.nametag, split.ext = split.nameext:match("([^.]*)(%..*)")
 	split.name, split.tag = split.nametag:match("(.*)_(.*)")
 	if split.name == nil then split.name, split.tag = split.nametag, "" end
+	
+	if common.layouts[tag] == nil then
+		split.name, split.tag = split.name .. "_" .. split.tag, ""
+	end
+	
 	return split
 end
 
