@@ -79,6 +79,7 @@ end
 
 --[[
 common.split(C:\Smoothing\fly_shop_empty_dot.base.111.png) = {
+	href    = C:\Smoothing\fly_shop_empty_dot.base.111.png
 	dir     = C:\Smoothing
 	nameext = fly_shop_empty_dot.base.111.png
 	nametag = fly_shop_empty_dot
@@ -89,6 +90,7 @@ common.split(C:\Smoothing\fly_shop_empty_dot.base.111.png) = {
 ]]
 function common.split(target)
 	local split = {}
+	split.href = target
 	split.dir = path.dirname(target)
 	split.nameext = path.basename(target)
 	split.nametag, split.ext = split.nameext:match("([^.]*)(%..*)")
