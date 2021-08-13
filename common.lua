@@ -101,30 +101,29 @@ end
 
 -- Generic conversion function
 function common.convert(split, fromtag, totag)
-	-- output path
-	local where = split.dir .. "\\" .. split.name .. "_" .. totag .. split.ext
-	
 	-- get layouts
 	local src = assert(common.layouts[fromtag], "Unknown tag " .. fromtag)
 	local dst = assert(common.layouts[totag]  , "Unknown tag " .. totag)
 	
-	-- src2 is the inverse of src
-	local src2 = {w = src.w, h = src.h}
-	for i,v in ipairs(src) do src2[v] = i end
+	local invsrc = {w = src.w, h = src.h} -- inverse of src
+	for i,v in ipairs(src) do invsrc[v] = i end
 	
-	-- dst2 is a list of imagemagick operations, each generating a tile of dst
-	local dst2 = {w = dst.w, h = dst.h}
-	for i,v in ipairs(dst) do dst2[i] = common.get(common.unparse(split.href), src2, v) end
+	local rope = {} -- list of imagemagick operations, each generating a tile of dst
+	for i,v in ipairs(dst) do rope[i] = common.get(common.unparse(split.nameext), invsrc, v) end
+	
+	-- output name
+	local outname = split.name .. (totag == "" and "" or ("_" .. totag)) .. split.ext
 	
 	-- build montage command
 	local command = table.concat({
+		"cd " .. split.dir .. " & ",         -- cd to image (for shorter command line)
 		"magick montage",                    -- arrange tiles in a grid
-		"-tile " .. dst2.w .. "x" .. dst2.h, -- grid size is w*h
+		"-tile " .. dst.w .. "x" .. dst.h, -- grid size is w*h
 		"-background none",                  -- transparent background
 		"-geometry +0+0",                    -- no space between tiles
-		table.concat(dst2, " "),
+		table.concat(rope, " "),
 		"-strip",                            -- strip unnecessary png chunks
-		common.unparse(where),               -- output
+		common.unparse(outname),             -- output
 	}, " ")
 	
 	p(command, #command)
