@@ -99,7 +99,7 @@ function common.split(target)
 	split.name, split.tag = split.nametag:match("(.*)_(.*)")
 	if split.name == nil then split.name, split.tag = split.nametag, "" end
 	
-	if common.layouts[tag] == nil then
+	if common.layouts[split.tag] == nil then
 		split.name, split.tag = split.name .. "_" .. split.tag, ""
 	end
 	
