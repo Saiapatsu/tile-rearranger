@@ -131,7 +131,7 @@ local function empty() return "-size 32x32 xc:#00000000" end
 local function clip(geometry)
 	return function(from, src, i)
 		return table.concat({"(", -- separate stack from the other images
-			get(from, src, -1), -- solid tile
+			common.get(from, src, -1), -- solid tile
 			"-crop " .. geometry, -- leave only the specified area. the
 			--                        "virtual canvas" position remains!
 			empty(), -- a transparent image the size of one tile
