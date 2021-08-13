@@ -7,68 +7,58 @@ local common = {}
 
 -- http://www.windowsinspired.com/understanding-the-command-line-string-and-arguments-received-by-a-windows-program/
 -- http://www.windowsinspired.com/how-a-windows-programs-splits-its-command-line-into-individual-arguments/
--- Will return str such that CommandLineToArgvW or parse_cmdline, if it enters in
--- InterpretSpecialChars, will consider it one continuous argument
--- and will remain in InterpretSpecialChars afterward
+-- Escapes str such that it will be received as intended after being passed through
+-- shell execution (which looks for ^, >, & etc.) and CommandLineToArgvW or parse_cmdline
+-- (which look for ", backslash and spaces)
 -- Quotes, if necessary, will be placed around the string, not inside
--- The return value will be up to double the size of the input if it
--- consists entirely of quotes or backslashes,
--- and will output [" \""] (5 chars) for [ "] (2 chars)
--- NB! Carets, redirection etc. are handled by the shell, not here!
 function common.unparse(str)
-	local i = 1
-	local lasti = 1 -- used to reduce amount of appends needed
-	local len = #str
-	local out = ""
+	str = str:gsub([[(\*)"]], [[%1%1\"]]) -- escape quotes and their leading backslashes
 	
-	local needQuotes = false
-	
-	local function yeah()
-		out = out .. str:sub(lasti, i-1)
-		lasti = i
-	end
-	
-	while i <= len do
-		local char = str:sub(i, i)
-		
-		if char == "\\" then
-			yeah()
-			-- look for runs of \
-			-- if run is followed by ", escape all of it and the "
-			-- else emit as-is
-			repeat i = i + 1 char = str:sub(i, i) until char ~= "\\"
-			if char == "\"" then
-				out = out .. ("\\"):rep((i - lasti) * 2 + 1)
-				lasti = i
-			else
-				yeah()
-			end
-			
-		elseif char == "\"" then
-			yeah()
-			out = out .. "\\"
-			
-		elseif char == " " or char == "\t" then
-			needQuotes = true
-		end
-		i = i + 1
-	end
-	yeah()
-	
-	if needQuotes then
-		-- trailing backslash may eat the quote
-		if out:sub(-1) == "\\" then out = out .. "\\" end
-		-- starting an executable on a path starting with a quote has arcane
-		-- behavior, let's put the quote after the first character to avoid that
-		if out:sub(1, 1) == " " or out:sub(1, 1) == "\t" then
-			-- beyond saving
-			out = "\"" .. out .. "\""
+	if str:find("[ \t]") then -- has whitespace, surround in quotes
+		if str:sub(-1) == "\\" then str = str .. "\\" end -- escape trailing backslash
+		if str:sub(1, 1) == " " or str:sub(1, 1) == "\t" then
+			str = "\"" .. str .. "\""
 		else
-			out = out:sub(1, 1) .. "\"" .. out:sub(2) .. "\""
+			-- quote goes after first character to sidestep arcane startprocess() behavior
+			str = str:sub(1, 1) .. "\"" .. str:sub(2) .. "\""
 		end
 	end
 	
-	return out
+	str:gsub("[[&<>^|\n]]", "^%0") -- escape shell characters
+	
+	return str
+	
+	-- argv in a nutshell:
+	-- quote toggles space parsing instead of "delimiting" anything, and
+	-- backslashes are literal except when they're followed by a quote.
+	
+	-- more specifically:
+	-- start in an "interpreting" state
+	-- when interpreting, split on spaces
+	-- on backslash, count it, don't emit it
+	-- on quote, emit half the counted backslashes, then toggle interpreting
+	-- state if there is an even amount of backslashes or emit " if odd
+	-- on quote following quote, attempt "quote escaping quote" (not relevant here)
+	-- on any other character, emit all counted backslashes and the character
+	
+	-- it is the responsibility of the program to split its arg string
+	-- into an argument list. some programs either don't do it (such as
+	-- echo) or split it themselves
+	-- for a demonstration, do echo "foo" > CON in the console
+	-- echo does not use argv (which might've stripped those quotes), it
+	-- echoes its args string as-is
+	-- > is interpreted by the shell, so the stdout of echo is redirected
+	-- to a file named CON, which is actually a device that prints to console
+	-- echo "foo" ^> CON will echo "foo" > CON in one piece
+	
+	-- shell characters are separate from the quotes, spaces, backslashes
+	-- etc. unparsed above
+	-- for a demonstration, do echo "foo" > CON in the console
+	-- echo does not use argv (which might've stripped those quotes), it
+	-- echoes its args string as-is
+	
+	-- batch will mangle percents (and bangs if in delayed expansion mode),
+	-- but that's out of the scope of this function
 end
 
 --------------------------------------------------------------------------------
