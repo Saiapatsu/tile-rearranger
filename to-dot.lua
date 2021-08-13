@@ -1,23 +1,11 @@
 local path = require("path")
-local common = require(path.resolve(path.dirname(table.remove(args, 1)), "common.lua")) -- infuriating drag-and-drop behavior on windows. there is no cd() in lua
--- TODO: make drag and drop on lua do cd %~p1 on my system
+local script = table.remove(args, 1)
+local common = require(path.resolve(path.dirname(script), "common.lua")) -- ignore "current directory"
 
+local toWhat = script:match(".*%-(.*)%.lua$")
 for _,target in ipairs(args) do
 	local split = common.split(target)
 	
-	local success, reason, exitcode = os.execute(table.concat({
-		"magick",
-		"-bordercolor #00000000",
-		common.unparse(target),
-		"-border 32x32",
-		"-strip",
-		common.unparse(split.dir .. "\\" .. split.nametag .. "_dot" .. split.ext)
-	}, " "))
-	
-	if not success then
-		print("Unable to convert " .. split.tag .. " to " .. tag)
-		io.read()
-	end
+	local success, err = pcall(common.convert, split, split.tag, toWhat)
+	print(success, err)
 end
-
--- io.read()

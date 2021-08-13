@@ -1,7 +1,11 @@
 local path = require("path")
 local script = table.remove(args, 1)
-local common = require(path.resolve(path.dirname(script), "common.lua")) -- infuriating drag-and-drop behavior on windows. there is no cd() in lua
+local common = require(path.resolve(path.dirname(script), "common.lua")) -- ignore "current directory"
 
+local toWhat = script:match(".*%-(.*)%.lua$")
 for _,target in ipairs(args) do
-	common.convert(target, script:match(".*%-(.*)%.lua$"))
+	local split = common.split(target)
+	
+	local success, err = pcall(common.convert, split, split.tag, toWhat)
+	print(success, err)
 end

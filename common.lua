@@ -110,19 +110,41 @@ end
 --                                  Conversion
 --------------------------------------------------------------------------------
 
-function common.convert(target, tag)
-	local split = common.split(target)
-	local where = split.dir .. "\\" .. split.name .. "_" .. tag .. split.ext
-	local what = split.tag .. "-to-" .. tag
+-- Generic conversion function
+function common.convert(split, fromtag, totag)
+	-- output path
+	local where = split.dir .. "\\" .. split.name .. "_" .. totag .. split.ext
 	
-	local success, reason, exitcode = os.execute(table.concat({
-		common.unparse(path.resolve(path.dirname(args[1]), "conversion\\" .. what)),
-		common.unparse(target),
-		common.unparse(where),
-	}, " "))
+	-- get layouts
+	local src = assert(common.layouts[fromtag], "Unknown tag " .. fromtag)
+	local dst = assert(common.layouts[totag]  , "Unknown tag " .. totag)
+	
+	-- src2 is the inverse of src
+	local src2 = {w = src.w, h = src.h}
+	for i,v in ipairs(src) do src2[v] = i end
+	
+	-- dst2 is a list of imagemagick operations, each generating a tile of dst
+	local dst2 = {w = dst.w, h = dst.h}
+	for i,v in ipairs(dst) do dst2[i] = common.get(common.unparse(split.href), src2, v) end
+	
+	-- build montage command
+	local command = table.concat({
+		"magick montage",                    -- arrange tiles in a grid
+		"-tile " .. dst2.w .. "x" .. dst2.h, -- grid size is w*h
+		"-background none",                  -- transparent background
+		"-geometry +0+0",                    -- no space between tiles
+		table.concat(dst2, " "),
+		"-strip",                            -- strip unnecessary png chunks
+		common.unparse(where),               -- output
+	}, " ")
+	
+	p(command, #command)
+	
+	-- run
+	local success, reason, exitcode = os.execute(command)
 	
 	if not success then
-		print("Unable to convert " .. split.tag .. " to " .. tag)
+		print("Unable to convert " .. fromtag .. " to " .. totag)
 		io.read()
 	end
 end
