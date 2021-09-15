@@ -230,7 +230,8 @@ function common.get(from, src, i)
 		return common.composition[i](from, src, i)
 		
 	else
-		error("Unable to find or create tile " .. i)
+		-- error("Unable to find or create tile " .. i)
+		return "-size 32x32 xc:#ff0000ff"
 	end
 end
 
