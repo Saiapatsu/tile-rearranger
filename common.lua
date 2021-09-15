@@ -288,21 +288,60 @@ common.layouts = {
 }
 
 --[[
-local function wallify(x)
-	local wx = x & 170 -- only horizontals
-	return ((x)
-		| (wx >> 1) -- dilate horizontals
-		| (wx << 1)
-		| (wx >> 7)
-		| (wx << 7)
-	) & 255
-end
+-- fix spaces
+([^\n, ]+)( +)
+$2$1
 
-function fixup()
-	editor:BeginUndoAction()
-	editor:SetText(editor:GetText():gsub("%d+", wallify))
-	editor:EndUndoAction()
+-- dilate orthogonals
+dofunc(function(text)
+	return text:gsub("%d+", function(x)
+		return x | dilate(x & 170)
+	end)
+end)
+
+-- fix numbering mistake
+dofunc(function(text)
+	return text:gsub("%d+", function(x)
+		local edges = (x & 170)
+		local corners = (x & ~dilate(edges))
+		return bitroll(corners, 2) | dilate(bitroll(edges, 4))
+	end)
+end)
+
+-- convert misaligned cr31 wall blob to aligned edge blob
+dofunc(function(text)
+	return text:gsub("%d+", function(x)
+		return bitroll(~x & 255, 1)
+	end)
+end)
+
+-- construct an image with id labels over each tile
+local layout = { -- cr31 blob
+		w = 7, h = 7,
+		255, 253, 209, 193, 197, 215,  -1,
+		247, 245,  84,  16,   7, 117, 223,
+		113,  69,  85,  92,  17,  65, 199,
+		112,   1,  71, 241,  64,   4,  23,
+		116,  28,  21,  80,   0,   5,  87,
+		125, 213,  81,  68,  20,  31, 119,
+		 -1, 127, 124,  29,  93, 221,  95,
+}
+for k,v in ipairs(layout) do
+	layout[k] = "label:" .. v
 end
+for i = layout.h-1, 1, -1 do
+	table.insert(layout, i * layout.w + 1, "+append ) (")
+end
+print(table.concat({
+	"magick",
+	"-size 32x32",
+	"-background none",
+	"-gravity center -pointsize 10 -fill white -font Arial +antialias",
+	"( " .. table.concat(layout, " ") .. " +append )",
+	"-append",
+	"out.png",
+}, " "))
+
 ]]
 
 --------------------------------------------------------------------------------
