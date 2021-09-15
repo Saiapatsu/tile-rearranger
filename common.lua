@@ -112,7 +112,8 @@ function common.convert(split, fromtag, totag)
 	local command = table.concat({
 		"cd " .. split.dir .. " & ",         -- cd to image (for shorter command line)
 		"magick montage",                    -- arrange tiles in a grid
-		"-tile " .. dst.w .. "x" .. dst.h, -- grid size is w*h
+		"-tile " .. dst.w .. "x" .. dst.h,   -- grid size is w*h
+		"-size 32x32",
 		"-background none",                  -- transparent background
 		"-geometry +0+0",                    -- no space between tiles
 		table.concat(rope, " "),
@@ -136,7 +137,7 @@ end
 --------------------------------------------------------------------------------
 
 -- blank tile
-local function empty() return "-size 32x32 xc:#00000000" end
+local function empty() return "xc:#00000000" end
 
 -- clip a part out of a solid tile
 local function clip(geometry)
@@ -231,7 +232,7 @@ function common.get(from, src, i)
 		
 	else
 		-- error("Unable to find or create tile " .. i)
-		return "-size 32x32 xc:#ff0000ff"
+		return "xc:#ff0000ff"
 	end
 end
 
