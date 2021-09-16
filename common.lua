@@ -5,56 +5,48 @@ local common = {}
 --                            Shell execution-related
 --------------------------------------------------------------------------------
 
--- http://www.windowsinspired.com/understanding-the-command-line-string-and-arguments-received-by-a-windows-program/
--- http://www.windowsinspired.com/how-a-windows-programs-splits-its-command-line-into-individual-arguments/
--- Escapes str such that it will be received as intended after being passed through
--- shell execution (which looks for ^, >, & etc.) and CommandLineToArgvW or parse_cmdline
--- (which look for ", backslash and spaces)
+-- function unparse(str)
+-- Fortifies str against Windows cmd followed by CommandLineToArgvW
+-- cmd processes redirections and environment substitution whereas
+-- CommandLineToArgvW and parse_cmdline split the string into arguments
 -- Quotes, if necessary, will be placed around the string, not inside
 function common.unparse(str)
-	str = str:gsub([[(\*)"]], [[%1%1\"]]) -- escape quotes and their leading backslashes
+	-- escape quotes and their leading backslashes
+	str = str:gsub([[(\*)"]], [[%1%1\"]])
 	
-	if str:find("[ \t]") then -- has whitespace, surround in quotes
-		if str:sub(-1) == "\\" then str = str .. "\\" end -- escape trailing backslash
-		str = "\"" .. str .. "\""
-	end
+	-- surround in quotes, escape trailing backslashes
+	-- bug: trailing or leading quotes in source string may form double quotes
+	str = '"' .. str:gsub([[(\*)$]], [[%1%1"]])
 	
-	str = str:gsub("[&<>^|\n]", "^%0") -- escape shell characters
+	-- escape cmd characters
+	str = str:gsub('[()<>^&|%!"\n]', "^%0")
 	
 	return str
 	
-	-- argv in a nutshell:
-	-- quote toggles space parsing instead of "delimiting" anything, and
-	-- backslashes are literal except when they're followed by a quote.
+	--[[
+	-- right now, this function is defensive and makes super ugly strings
 	
-	-- more specifically:
-	-- start in an "interpreting" state
-	-- when interpreting, split on spaces
-	-- on backslash, count it, don't emit it
-	-- on quote, emit half the counted backslashes, then toggle interpreting
-	-- state if there is an even amount of backslashes or emit " if odd
-	-- on quote following quote, attempt "quote escaping quote" (not relevant here)
-	-- on any other character, emit all counted backslashes and the character
+	os.execute and its ilk will execute something with cmd
+	cmd will preprocess specific characters, split into commands etc.
+	after this, it will execute programs with the resulting command lines
+	programs themselves are responsible for splitting their args,
+	generally using CommandLineToArgvW or parse_cmdline. they behave thus:
+	quote toggles space parsing instead of "delimiting" anything, and
+	backslashes are literal except when they're followed by a quote,
+	in which case they escape each other and may escape the quote
 	
-	-- it is the responsibility of the program to split its arg string
-	-- into an argument list. some programs either don't do it (such as
-	-- echo) or split it themselves
-	-- for a demonstration, do echo "foo" > CON in the console
-	-- echo does not use argv (which might've stripped those quotes), it
-	-- echoes its args string as-is
-	-- > is interpreted by the shell, so the stdout of echo is redirected
-	-- to a file named CON, which is actually a device that prints to console
-	-- echo "foo" ^> CON will echo "foo" > CON in one piece
+	some programs do not use these functions to process arguments
 	
-	-- shell characters are separate from the quotes, spaces, backslashes
-	-- etc. unparsed above
-	-- for a demonstration, do echo "foo" > CON in the console
-	-- echo does not use argv (which might've stripped those quotes), it
-	-- echoes its args string as-is
+	batch will mangle percents (and bangs if in delayed expansion mode),
+	but that's out of the scope of this function
 	
-	-- batch will mangle percents (and bangs if in delayed expansion mode),
-	-- but that's out of the scope of this function
+	https://docs.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way
+	http://www.windowsinspired.com/understanding-the-command-line-string-and-arguments-received-by-a-windows-program/
+	http://www.windowsinspired.com/how-a-windows-programs-splits-its-command-line-into-individual-arguments/
+	
+	]]
 end
+-- Copied on 20210916
 
 --------------------------------------------------------------------------------
 --                              Filename management
