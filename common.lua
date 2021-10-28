@@ -91,13 +91,21 @@ function common.convert(split, fromtag, totag)
 	local src = assert(common.layouts[fromtag], "Unknown tag " .. fromtag)
 	local dst = assert(common.layouts[totag]  , "Unknown tag " .. totag)
 	
-	local invsrc = {w = src.w, h = src.h} -- inverse of src
-	for i,v in ipairs(src) do invsrc[v] = i end
+	local conversion = {
+		w = src.w,
+		h = src.h,
+		file = common.unparse(split.nameext),
+		get = common.get, -- method
+	}
+	local rope = {} -- list of imagemagick operations, each of which generates a tile
 	
-	local rope = {} -- list of imagemagick operations, each generating a tile of dst
-	for i,v in ipairs(dst) do rope[i] = common.get(common.unparse(split.nameext), invsrc, v) end
+	-- map source tiles to positions
+	for i,v in ipairs(src) do conversion[v] = i end
 	
-	-- output name
+	-- map output tiles to tiles from input
+	for i,v in ipairs(dst) do rope[i] = conversion:get(v) end
+	
+	-- build output filename
 	local outname = split.name .. (totag == "" and "" or ("_" .. totag)) .. split.ext
 	
 	-- build montage command
@@ -159,29 +167,29 @@ local function empty() return "xc:#00000000" end
 local function errtile() return "xc:#ff0000ff" end
 
 -- get a tile by id
-local function get(from, src, i, geometry)
+local function get(src, i, geometry)
 	if src[i] then
 		-- exact match
 		local xx, yy = xy(src, i)
 		if geometry then
 			local x, y, w, h = parseGeometry(geometry)
-			return from .. "[" .. makeGeometry(x+xx, y+yy, w, h) .. "]"
+			return src.file .. "[" .. makeGeometry(x+xx, y+yy, w, h) .. "]"
 		else
-			return from .. "[" .. makeGeometry(xx*32, yy*32, 32, 32) .. "]"
+			return src.file .. "[" .. makeGeometry(xx*32, yy*32, 32, 32) .. "]"
 		end
 		
 	elseif common.composition[i] then
 		if geometry then
 			return table.concat({
 				"(",
-					common.composition[i](from, src, i),
+					common.composition[i](src, i),
 					"-crop ", geometry,
 					empty(),
 					"-flatten",
 				")",
 			}, " ")
 		else
-			return common.composition[i](from, src, i)
+			return common.composition[i](src, i)
 		end
 		
 	else
@@ -193,10 +201,10 @@ end
 -- overlay many tiles verbatim
 local function combine(...)
 	local args = {...}
-	return function(from, src, i)
+	return function(src, i)
 		local args2 = {}
 		for i,v in ipairs(args) do
-			args2[i] = get(from, src, v)
+			args2[i] = get(src, v)
 			if args2[i] == nil then return end
 		end
 		return "( " .. table.concat(args2, " ") .. " +repage -flatten )"
@@ -206,9 +214,9 @@ end
 -- attempt different operations until one succeeds
 local function alternate(...)
 	local args = {...}
-	return function(from, src, i)
+	return function(src, i)
 		for _, operation in ipairs(args) do
-			local result = operation(from, src, i)
+			local result = operation(src, i)
 			if result then return result end
 		end
 	end
@@ -217,10 +225,10 @@ end
 -- clip a part out of a tile
 local function clip(geometry, tile)
 	tile = tile or -1
-	return function(from, src, i)
+	return function(src, i)
 		return table.concat({
 			"( ",
-				get(from, src, tile, geometry),
+				get(src, tile, geometry),
 				empty(),
 				"-flatten",
 			")",
@@ -230,11 +238,11 @@ end
 
 -- combine corners of different tiles into one tile
 local function corners(ne, se, sw, nw)
-	return function(from, src, i)
-		local ne = get(from, src, i, "16x16+16+0")
-		local se = get(from, src, i, "16x16+16+16")
-		local sw = get(from, src, i, "16x16+0+16")
-		local nw = get(from, src, i, "16x16+0+0")
+	return function(src, i)
+		local ne = get(src, i, "16x16+16+0")
+		local se = get(src, i, "16x16+16+16")
+		local sw = get(src, i, "16x16+0+16")
+		local nw = get(src, i, "16x16+0+0")
 		if not (ne and se and sw and nw) then return end
 		return table.concat({"(", ne, se, sw, nw, "-flatten", ")"}, " ")
 	end
