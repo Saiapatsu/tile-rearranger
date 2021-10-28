@@ -128,33 +128,121 @@ end
 --                                Tile composition
 --------------------------------------------------------------------------------
 
+-- index to position
+local function xy(src, i)
+	local x = (src[i]  -1)%src.w
+	return x, (src[i]-x-1)/src.w
+end
+
+-- geometry expression to x, y, w, h
+-- must be a full geometry
+local function parseGeometry(geometry)
+	local w, h, x, y = geometry:match("(%d+)x(%d+)([+-]%d+)([+-]%d+)")
+	if not w then error("Not a fully formed geometry: " .. geometry, 2) end
+	return tonumber(x), tonumber(y), tonumber(w), tonumber(h)
+end
+
+local function makeGeometry(x, y, w, h)
+	return
+		((w and h)
+			and w .. "x" .. h
+			or  "") ..
+		((x and y)
+			and (x < 0 and x or "+" .. x) .. (y < 0 and y or "+" .. y)
+			or  "")
+end
+
 -- blank tile
 local function empty() return "xc:#00000000" end
 
--- clip a part out of a solid tile
-local function clip(geometry)
-	return function(from, src, i)
-		return table.concat({"(", -- separate stack from the other images
-			common.get(from, src, -1), -- solid tile
-			"-crop " .. geometry, -- leave only the specified area. the
-			--                        "virtual canvas" position remains!
-			empty(), -- a transparent image the size of one tile
-			"-flatten", -- flatten into one tile-sized layer with the tile
-			--            in the right spot
-		")"}, " ")
+-- error tile
+local function errtile() return "xc:#ff0000ff" end
+
+-- get a tile by id
+local function get(from, src, i, geometry)
+	if src[i] then
+		-- exact match
+		local xx, yy = xy(src, i)
+		if geometry then
+			local x, y, w, h = parseGeometry(geometry)
+			return from .. "[" .. makeGeometry(x+xx, y+yy, w, h) .. "]"
+		else
+			return from .. "[" .. makeGeometry(xx*32, yy*32, 32, 32) .. "]"
+		end
+		
+	elseif common.composition[i] then
+		if geometry then
+			return table.concat({
+				"(",
+					common.composition[i](from, src, i),
+					"-crop ", geometry,
+					empty(),
+					"-flatten",
+				")",
+			}, " ")
+		else
+			return common.composition[i](from, src, i)
+		end
+		
+	else
+		-- error("Unable to find or create tile " .. i)
+		return nil
 	end
 end
 
--- overlay many tiles
+-- overlay many tiles verbatim
 local function combine(...)
 	local args = {...}
 	return function(from, src, i)
 		local args2 = {}
 		for i,v in ipairs(args) do
-			args2[i] = common.get(from, src, v)
+			args2[i] = get(from, src, v)
+			if args2[i] == nil then return end
 		end
 		return "( " .. table.concat(args2, " ") .. " +repage -flatten )"
 	end
+end
+
+-- attempt different operations until one succeeds
+local function alternate(...)
+	local args = {...}
+	return function(from, src, i)
+		for _, operation in ipairs(args) do
+			local result = operation(from, src, i)
+			if result then return result end
+		end
+	end
+end
+
+-- clip a part out of a tile
+local function clip(geometry, tile)
+	tile = tile or -1
+	return function(from, src, i)
+		return table.concat({
+			"( ",
+				get(from, src, tile, geometry),
+				empty(),
+				"-flatten",
+			")",
+		}, " ")
+	end
+end
+
+-- combine corners of different tiles into one tile
+local function corners(ne, se, sw, nw)
+	return function(from, src, i)
+		local ne = get(from, src, i, "16x16+16+0")
+		local se = get(from, src, i, "16x16+16+16")
+		local sw = get(from, src, i, "16x16+0+16")
+		local nw = get(from, src, i, "16x16+0+0")
+		if not (ne and se and sw and nw) then return end
+		return table.concat({"(", ne, se, sw, nw, "-flatten", ")"}, " ")
+	end
+end
+
+-- like get() but always returns *something*
+function common.get(...)
+	return get(...) or errtile()
 end
 
 common.composition = {
@@ -211,22 +299,6 @@ common.composition = {
 	[215] = combine(199, 16),
 	[ 95] = combine( 31, 64),
 }
-
-function common.get(from, src, i)
-	if src[i] then
-		-- exact match
-		local x = (src[i]  -1)%src.w
-		local y = (src[i]-x-1)/src.w
-		return from .. "[32x32+" .. x*32 .. "+" .. y*32 .. "]"
-		
-	elseif common.composition[i] then
-		return common.composition[i](from, src, i)
-		
-	else
-		-- error("Unable to find or create tile " .. i)
-		return "xc:#ff0000ff"
-	end
-end
 
 common.layouts = {
 	[""] = { -- single tile
