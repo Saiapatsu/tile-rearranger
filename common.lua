@@ -85,38 +85,69 @@ end
 --                                  Conversion
 --------------------------------------------------------------------------------
 
+-- returns specific bits of a char
+local function qne(i) return bit.bor(bit.band(i, 3), bit.band(i, 128)) end -- 8, 1, 2
+local function qse(i) return bit.band(i, 14)  end -- 2, 3, 4
+local function qsw(i) return bit.band(i, 56)  end -- 4, 5, 6
+local function qnw(i) return bit.band(i, 224) end -- 6, 7, 8
+
+-- montages an array of tiles with append and without magick montage
+-- modifies tbl in-place
+local function montage(tbl, width, height)
+	local ipos = width * height - width + 1
+	local opos = width * height - width + height + 1
+	while ipos >= 1 do
+		table.move(tbl, ipos, ipos + width - 1, opos)
+		tbl[opos - 1] = "+append ) ("
+		ipos = ipos - width
+		opos = opos - width - 1
+	end
+	tbl[1] = "("
+	table.insert(tbl, "+append ) -append")
+	return tbl
+end
+
 -- Generic conversion function
 function common.convert(split, fromtag, totag)
 	-- get layouts
 	local src = assert(common.layouts[fromtag], "Unknown tag " .. fromtag)
 	local dst = assert(common.layouts[totag]  , "Unknown tag " .. totag)
 	
-	local conversion = {
+	local conv = {
 		w = src.w,
 		h = src.h,
 		file = common.unparse(split.nameext),
 		get = common.get, -- method
+		q = {},
 	}
 	local rope = {} -- list of imagemagick operations, each of which generates a tile
 	
-	-- map source tiles to positions
-	for i,v in ipairs(src) do conversion[v] = i end
+	-- pre-chew information about source
+	for i,v in ipairs(src) do
+		conv[v] = i
+		-- mark a quarter as available
+		local ne, se, sw, nw = qne(v), qse(v), qsw(v), qnw(v)
+		conv.q[ne] = v
+		conv.q[se] = v
+		conv.q[sw] = v
+		conv.q[nw] = v
+	end
+	conv.q[0] = nil
+	-- for i,v in ipairs(conv.q) do for k,v in pairs(v) do print(i, k, v) end end
 	
 	-- map output tiles to tiles from input
-	for i,v in ipairs(dst) do rope[i] = conversion:get(v) end
+	for i,v in ipairs(dst) do rope[i] = conv:get(v) end
 	
 	-- build output filename
 	local outname = split.name .. (totag == "" and "" or ("_" .. totag)) .. split.ext
 	
-	-- build montage command
+	-- build command
 	local command = table.concat({
 		"cd " .. split.dir .. " & ",         -- cd to image (for shorter command line)
-		"magick montage",                    -- arrange tiles in a grid
-		"-tile " .. dst.w .. "x" .. dst.h,   -- grid size is w*h
+		"magick",
 		"-size 32x32",
-		"-background none",                  -- transparent background
-		"-geometry +0+0",                    -- no space between tiles
-		table.concat(rope, " "),
+		"-background #00000000",
+		table.concat(montage(rope, dst.w, dst.h), " "),
 		"-strip",                            -- strip unnecessary png chunks
 		common.unparse(outname),             -- output
 	}, " ")
@@ -166,6 +197,58 @@ local function empty() return "xc:#00000000" end
 -- error tile
 local function errtile() return "xc:#ff0000ff" end
 
+local function getquarter(src, i, x, y)
+	if i == 0 then
+		return empty() .. "[16x16+0+0]"
+	end
+	
+	if src[i] then
+		local xx, yy = xy(src, i)
+		return src.file .. "[" .. makeGeometry(x+xx*32, y+yy*32, 16, 16) .. "]"
+	end
+	
+	if common.composition[i] then
+		return table.concat({
+			"(",
+				common.composition[i](src, i),
+				"-crop " .. makeGeometry(x, y, 16, 16),
+				"+repage",
+				"-flatten",
+			")",
+		}, " ")
+		
+	else
+		return
+	end
+end
+
+-- form a tile from quarters of other readily available tiles
+local function quart(src, i)
+	local ne, se, sw, nw = qne(i), qse(i), qsw(i), qnw(i)
+	ne, se, sw, nw = -- fill empty tiles with empty parts of adjacent quarters of the same tile
+		-- src.q[ne] or (src.q[se] and qne(src.q[se]) == 0 and src.q[se]) or (src.q[nw] and qne(src.q[nw]) == 0 and src.q[nw]) or 0,
+		-- src.q[se] or (src.q[sw] and qse(src.q[sw]) == 0 and src.q[sw]) or (src.q[ne] and qse(src.q[ne]) == 0 and src.q[ne]) or 0,
+		-- src.q[sw] or (src.q[nw] and qsw(src.q[nw]) == 0 and src.q[nw]) or (src.q[se] and qsw(src.q[se]) == 0 and src.q[se]) or 0,
+		-- src.q[nw] or (src.q[ne] and qnw(src.q[ne]) == 0 and src.q[ne]) or (src.q[sw] and qnw(src.q[sw]) == 0 and src.q[sw]) or 0
+		src.q[ne] or 0,
+		src.q[se] or 0,
+		src.q[sw] or 0,
+		src.q[nw] or 0
+	
+	if not (ne == 0 and se == 0 and sw == 0 and nw == 0) then
+		return table.concat({
+			"(", table.concat(montage({
+				getquarter(src, nw, 0 , 0 ),
+				getquarter(src, ne, 16, 0 ),
+				getquarter(src, sw, 0 , 16),
+				getquarter(src, se, 16, 16),
+			}, 2, 2), " "), ")",
+		}, " ")
+	end
+	
+	return
+end
+
 -- get a tile by id
 local function get(src, i, geometry)
 	if src[i] then
@@ -173,29 +256,31 @@ local function get(src, i, geometry)
 		local xx, yy = xy(src, i)
 		if geometry then
 			local x, y, w, h = parseGeometry(geometry)
-			return src.file .. "[" .. makeGeometry(x+xx, y+yy, w, h) .. "]"
+			return src.file .. "[" .. makeGeometry(x+xx*32, y+yy*32, w, h) .. "]"
 		else
 			return src.file .. "[" .. makeGeometry(xx*32, yy*32, 32, 32) .. "]"
 		end
-		
-	elseif common.composition[i] then
+	end
+	
+	local q = quart(src, i)
+	if q then return q end
+	
+	if common.composition[i] then
 		if geometry then
 			return table.concat({
 				"(",
 					common.composition[i](src, i),
 					"-crop ", geometry,
-					empty(),
+					"+repage",
 					"-flatten",
 				")",
 			}, " ")
 		else
 			return common.composition[i](src, i)
 		end
-		
-	else
-		-- error("Unable to find or create tile " .. i)
-		return nil
 	end
+	
+	return
 end
 
 -- overlay many tiles verbatim
@@ -229,22 +314,9 @@ local function clip(geometry, tile)
 		return table.concat({
 			"( ",
 				get(src, tile, geometry),
-				empty(),
 				"-flatten",
 			")",
 		}, " ")
-	end
-end
-
--- combine corners of different tiles into one tile
-local function corners(ne, se, sw, nw)
-	return function(src, i)
-		local ne = get(src, i, "16x16+16+0")
-		local se = get(src, i, "16x16+16+16")
-		local sw = get(src, i, "16x16+0+16")
-		local nw = get(src, i, "16x16+0+0")
-		if not (ne and se and sw and nw) then return end
-		return table.concat({"(", ne, se, sw, nw, "-flatten", ")"}, " ")
 	end
 end
 
@@ -256,6 +328,7 @@ end
 common.composition = {
 	[ -1] = empty, -- solid tile
 	[  0] = empty, -- blank tile
+	-- --[=[
 	-- the compass direction refers to which directions are solid
 	-- corners      nw sw se ne
 	[  1] = --[[   (          1),]] clip("15x15+17+0"),
@@ -307,6 +380,7 @@ common.composition = {
 	[245] = combine(241,  4),
 	[215] = combine(199, 16),
 	[ 95] = combine( 31, 64),
+	-- ]=]
 }
 
 common.layouts = {
@@ -314,27 +388,27 @@ common.layouts = {
 		w = 1, h = 1,
 		-1,
 	}, dot = {
-		w = 3, h = 3,
-		4,  28,  16,
-		7,  -1, 112,
-		1, 193,  64,
+		w = 4, h = 3,
+		4,  28,  16, -1,
+		7, 255, 112,  0,
+		1, 193,  64,  0,
 	}, dothash = {
 		w = 6, h = 3,
 		4,  28,  16,  31, 127, 124,
-		7,  -1, 112, 223, 255, 253,
+		7, -1, 112, 223, 255, 253,
 		1, 193,  64, 199, 247, 241,
 	}, dagger = { -- rearranged dothash without loose ends
 		w = 6, h = 3,
 		4,  31, 127, 124,  28,  16,
-		7,  -1, 255, 253, 223, 112,
+		7, -1, 255, 253, 223, 112,
 		1, 199, 247, 241, 193,  64,
 	}, bruh = { -- rearranged S without loose ends
-		w = 6, h = 5,
-		255, 253, 81, 193, 69, 223,
-		247, 241, 68,  20, 17, 199,
-		 85,  80,  1,  65, 64,   5,
-		119, 112,  4,  28, 16,   7,
-		127, 124, 21, 221, 84,  31,
+		w = 7, h = 5,
+		255, 253, 81, 193, 69, 223,  -1,
+		247, 241, 68,  20, 17, 199,  0,
+		 85,  80,  1,  65, 64,   5,  0,
+		119, 112,  4,  28, 16,   7,  0,
+		127, 124, 21, 221, 84,  31,  0,
 	}, S = {
 		w = 16, h = 2,
 		-1, 112, 193, 241, 7, 119, 199, 247, 28, 124, 221, 253, 31, 127, 223, 255,
