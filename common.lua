@@ -139,17 +139,17 @@ function common.convert(split, fromtag, totag)
 	for i,v in ipairs(dst) do rope[i] = conv:get(v) end
 	
 	-- build output filename
-	local outname = split.name .. (totag == "" and "" or ("_" .. totag)) .. split.ext
+	local outpath = common.unparse(split.name .. (totag == "" and "" or ("_" .. totag)) .. split.ext)
 	
 	-- build command
 	local command = table.concat({
-		"cd " .. split.dir .. " & ",         -- cd to image (for shorter command line)
+		"cd " .. split.dir .. " & ", -- cd to image (for shorter command line)
 		"magick",
 		"-size 32x32",
 		"-background #00000000",
 		table.concat(montage(rope, dst.w, dst.h), " "),
-		"-strip",                            -- strip unnecessary png chunks
-		common.unparse(outname),             -- output
+		"-strip", -- strip unnecessary png chunks
+		"png32:" .. outpath, -- output
 	}, " ")
 	
 	p(command, #command)
@@ -161,6 +161,8 @@ function common.convert(split, fromtag, totag)
 		print("Unable to convert " .. fromtag .. " to " .. totag)
 		io.read()
 	end
+	
+	return outpath
 end
 
 --------------------------------------------------------------------------------
