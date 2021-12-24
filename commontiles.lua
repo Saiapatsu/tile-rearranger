@@ -26,7 +26,7 @@ local file = io.popen(table.concat({
 	" -crop", w .. "x" .. h,
 	"-append",
 	"RGBA:-",
-}, " "))
+}, " "), "rb")
 
 for tile in function() return file:read(size) end do
 	mapinthis[tile] = true
@@ -40,7 +40,7 @@ local file = io.popen(table.concat({
 	" -crop", w .. "x" .. h,
 	"-append",
 	"RGBA:-",
-}, " "))
+}, " "), "rb")
 
 local many = 0
 
