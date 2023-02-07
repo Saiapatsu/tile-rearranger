@@ -1,6 +1,7 @@
 # tile-rearranger
 
-Lua (Luvit) and ImageMagick scripts for rearranging Crossfire smoothing maps.
+Lua (Luvit) and ImageMagick scripts for rearranging Crossfire smoothing maps.  
+They are meant for Windows and run shell commands in the Windows cmd syntax.
 
 There are example arrangements of smoothing edges in `example/`.  
 The blob arrangement is from cr31.
