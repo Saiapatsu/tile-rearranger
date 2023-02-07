@@ -1,15 +1,12 @@
 # tile-rearranger
 
-Tools in Lua for rearranging tilesets.
-
-Right now, they are specifically suited for manipulating Crossfire's smoothing maps.  
-In addition, they assume that the tiles are 32x32.
+Lua (Luvit) and ImageMagick scripts for rearranging Crossfire smoothing maps.
 
 There are example arrangements of smoothing edges in `example/`.  
 The blob arrangement is from cr31.
 
-The scripts were made for Windows and `luvit`, which has batteries that vanilla `lua` doesn't.  
-You might have to turn that `p()` into `print()`.
+If you aren't aware of Luvit, bear in mind that Luvit provides a custom `require` which searches in `deps` and the libraries packaged into the executable, but not the current directory unless instructed to (with `./` or `../`). It falls back to Lua's `require`.  
+Luvit comes with a lot of Node-inspired packages.
 
 ## Usage
 
